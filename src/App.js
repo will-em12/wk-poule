@@ -4,7 +4,7 @@ const SUPABASE_URL = "https://lgcuepcmhxyctlcppvrg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_J8mGajDSAcrL7mT4hPfc7A_ELUgg3ql";
 
 const API_URL = "https://api.football-data.org/v4/matches";
-const API_KEY = "JOUW_API_KEY_HIER"; // 👈 zet jouw key
+const API_KEY = "ade51590c8024835b133ec4ec93ec8e8"; // 🔥 vul je key in
 
 export default function App() {
 
@@ -22,26 +22,23 @@ export default function App() {
   const fetchLive = async () => {
     try {
       const res = await fetch(API_URL, {
-        headers: {
-          "X-Auth-Token": API_KEY
-        }
+        headers: { "X-Auth-Token": API_KEY }
       });
 
       const data = await res.json();
 
-      const wkMatches = data.matches
-        .slice(0, 5); // pak gewoon eerste 5
+      const selected = data.matches.slice(0, 6);
 
       const scoreMap = {};
-      const matchList = [];
+      const matchesList = [];
 
-      wkMatches.forEach(m => {
+      selected.forEach(m => {
         scoreMap[m.id] = {
           home: m.score.fullTime.home ?? 0,
           away: m.score.fullTime.away ?? 0
         };
 
-        matchList.push({
+        matchesList.push({
           id: m.id,
           home: m.homeTeam.name,
           away: m.awayTeam.name
@@ -49,23 +46,22 @@ export default function App() {
       });
 
       setRealScores(scoreMap);
-      setMatches(matchList);
+      setMatches(matchesList);
 
     } catch (err) {
-      console.log("API error", err);
+      console.log("API error:", err);
     }
   };
 
-  // ✅ refresh elke 30 sec
   useEffect(() => {
     fetchLive();
-    const interval = setInterval(fetchLive, 30000);
-    return () => clearInterval(interval);
+    const i = setInterval(fetchLive, 30000);
+    return () => clearInterval(i);
   }, []);
 
-  // ✅ FIXED INPUT
+  // ✅ VOORSPELLING OPSLAAN (BELANGRIJK FIX)
   const handleScore = (id, team, value) => {
-    setPredictions((prev) => ({
+    setPredictions(prev => ({
       ...prev,
       [id]: {
         ...(prev[id] || {}),
@@ -74,7 +70,7 @@ export default function App() {
     }));
   };
 
-  // ✅ punten
+  // ✅ PUNTEN BEREKENEN
   const calculatePoints = () => {
     let pts = 0;
 
@@ -84,6 +80,7 @@ export default function App() {
 
       if (!p || !r) return;
 
+      // juiste uitslag
       if (
         (p.home > p.away && r.home > r.away) ||
         (p.home < p.away && r.home < r.away) ||
@@ -92,6 +89,7 @@ export default function App() {
         pts += 3;
       }
 
+      // exacte score
       if (p.home === r.home && p.away === r.away) {
         pts += 2;
       }
@@ -101,7 +99,7 @@ export default function App() {
     return pts;
   };
 
-  // ✅ load ranking
+  // ✅ RANKING LADEN
   const loadRanking = async () => {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/poule?pool=eq.${pool}&select=*`,
@@ -117,7 +115,7 @@ export default function App() {
     setPlayers(data);
   };
 
-  // ✅ save
+  // ✅ OPSLAAN
   const save = async () => {
     const pts = calculatePoints();
 
@@ -140,17 +138,18 @@ export default function App() {
     loadRanking();
   };
 
-  // ✅ login
+  // ✅ LOGIN
   const login = () => {
     if (!name || !pool) {
       alert("Vul alles in");
       return;
     }
+
     setLoggedIn(true);
     loadRanking();
   };
 
-  // ✅ LOGIN
+  // ✅ LOGIN SCREEN
   if (!loggedIn) {
     return (
       <div style={{
@@ -158,15 +157,24 @@ export default function App() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "purple"
+        background: "linear-gradient(135deg, purple, blue)"
       }}>
-        <div style={{ background: "white", padding: "20px" }}>
+        <div style={{ background: "white", padding: "20px", borderRadius: "10px" }}>
+
           <h2>⚽ WK Poule</h2>
 
-          <input placeholder="Naam" onChange={(e) => setName(e.target.value)} /><br /><br />
-          <input placeholder="Poule" onChange={(e) => setPool(e.target.value)} /><br /><br />
+          <input
+            placeholder="Naam"
+            onChange={(e) => setName(e.target.value)}
+          /><br /><br />
+
+          <input
+            placeholder="Poule"
+            onChange={(e) => setPool(e.target.value)}
+          /><br /><br />
 
           <button onClick={login}>Start</button>
+
         </div>
       </div>
     );
@@ -180,14 +188,16 @@ export default function App() {
 
       {matches.map(m => {
         const live = realScores[m.id];
+        const my = predictions[m.id];
 
         return (
-          <div key={m.id} style={{ marginBottom: "10px" }}>
-            {m.home}
+          <div key={m.id} style={{ marginBottom: "15px" }}>
+
+            <strong>{m.home}</strong>
 
             <input
               type="number"
-              value={predictions[m.id]?.home ?? ""}
+              value={my?.home ?? ""}
               onChange={(e) => handleScore(m.id, "home", e.target.value)}
               style={{ width: "40px", margin: "0 5px" }}
             />
@@ -196,18 +206,27 @@ export default function App() {
 
             <input
               type="number"
-              value={predictions[m.id]?.away ?? ""}
+              value={my?.away ?? ""}
               onChange={(e) => handleScore(m.id, "away", e.target.value)}
               style={{ width: "40px", margin: "0 5px" }}
             />
 
-            {m.away}
+            <strong>{m.away}</strong>
 
+            {/* ✅ LIVE SCORE */}
             {live && (
-              <span style={{ marginLeft: "10px", color: "red" }}>
-                🔴 {live.home} - {live.away}
-              </span>
+              <div style={{ color: "red", fontSize: "12px" }}>
+                LIVE: {live.home} - {live.away}
+              </div>
             )}
+
+            {/* ✅ JOUW VOORSPELLING */}
+            {my && (
+              <div style={{ fontSize: "12px" }}>
+                Jij: {my.home} - {my.away}
+              </div>
+            )}
+
           </div>
         );
       })}
