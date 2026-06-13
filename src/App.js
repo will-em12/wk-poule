@@ -3,35 +3,68 @@ import React, { useState, useEffect } from "react";
 const SUPABASE_URL = "https://lgcuepcmhxyctlcppvrg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_J8mGajDSAcrL7mT4hPfc7A_ELUgg3ql";
 
+const API_URL = "https://api.football-data.org/v4/matches";
+const API_KEY = "ade51590c8024835b133ec4ec93ec8e8"; // 👈 HIER jouw key
+
 export default function App() {
 
   const [loggedIn, setLoggedIn] = useState(false);
   const [name, setName] = useState("");
   const [pool, setPool] = useState("");
+
+  const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState({});
   const [realScores, setRealScores] = useState({});
   const [players, setPlayers] = useState([]);
   const [points, setPoints] = useState(0);
 
-  // ✅ wedstrijden
-  const matches = [
-    { id: "1", home: "Nederland", away: "USA" },
-    { id: "2", home: "Frankrijk", away: "Brazilië" },
-    { id: "3", home: "Spanje", away: "Argentinië" },
-    { id: "4", home: "Duitsland", away: "Mexico" }
-  ];
+  // ✅ LIVE DATA
+  const fetchLive = async () => {
+    try {
+      const res = await fetch(API_URL, {
+        headers: {
+          "X-Auth-Token": API_KEY
+        }
+      });
 
-  // ✅ fake live scores
+      const data = await res.json();
+
+      const wkMatches = data.matches
+        .filter(m => m.competition.name.includes("World Cup"))
+        .slice(0, 6);
+
+      const scoreMap = {};
+      const matchList = [];
+
+      wkMatches.forEach(m => {
+        scoreMap[m.id] = {
+          home: m.score.fullTime.home ?? 0,
+          away: m.score.fullTime.away ?? 0
+        };
+
+        matchList.push({
+          id: m.id,
+          home: m.homeTeam.name,
+          away: m.awayTeam.name
+        });
+      });
+
+      setRealScores(scoreMap);
+      setMatches(matchList);
+
+    } catch (err) {
+      console.log("API error", err);
+    }
+  };
+
+  // ✅ automatisch refresh
   useEffect(() => {
-    setRealScores({
-      "1": { home: 2, away: 1 },
-      "2": { home: 1, away: 1 },
-      "3": { home: 0, away: 2 },
-      "4": { home: 3, away: 0 }
-    });
+    fetchLive();
+    const interval = setInterval(fetchLive, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  // ✅ voorspelling invullen
+  // ✅ score invoeren
   const handleScore = (id, team, value) => {
     setPredictions({
       ...predictions,
@@ -69,7 +102,7 @@ export default function App() {
     return pts;
   };
 
-  // ✅ ranking laden
+  // ✅ HAAL RANKING OP
   const loadRanking = async () => {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/poule?pool=eq.${pool}&select=*`,
@@ -85,7 +118,7 @@ export default function App() {
     setPlayers(data);
   };
 
-  // ✅ opslaan
+  // ✅ OPSLAAN
   const save = async () => {
     const pts = calculatePoints();
 
@@ -108,7 +141,7 @@ export default function App() {
     loadRanking();
   };
 
-  // ✅ login
+  // ✅ LOGIN
   const login = () => {
     if (!name || !pool) {
       alert("Vul alles in!");
@@ -118,7 +151,7 @@ export default function App() {
     loadRanking();
   };
 
-  // ✅ LOGIN RETURN (eerste return)
+  // ✅ LOGIN SCHERM
   if (!loggedIn) {
     return (
       <div style={{
@@ -140,11 +173,11 @@ export default function App() {
     );
   }
 
-  // ✅ HOOFD RETURN (tweede return - CORRECT)
+  // ✅ APP
   return (
     <div style={{ padding: "20px" }}>
 
-      <h1>🏆 WK Poule</h1>
+      <h1>🏆 WK Poule (LIVE)</h1>
 
       {matches.map(m => {
         const live = realScores[m.id];
@@ -171,7 +204,7 @@ export default function App() {
 
             {live && (
               <span style={{ marginLeft: "10px", color: "red" }}>
-                🔴 LIVE: {live.home} - {live.away}
+                🔴 {live.home} - {live.away}
               </span>
             )}
           </div>
