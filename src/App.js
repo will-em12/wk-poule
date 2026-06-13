@@ -4,7 +4,7 @@ const SUPABASE_URL = "https://lgcuepcmhxyctlcppvrg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_J8mGajDSAcrL7mT4hPfc7A_ELUgg3ql";
 
 const API_URL = "https://api.football-data.org/v4/matches";
-const API_KEY = "ade51590c8024835b133ec4ec93ec8e8"; // 👈 HIER jouw key
+const API_KEY = "JOUW_API_KEY_HIER"; // 👈 zet jouw key
 
 export default function App() {
 
@@ -18,7 +18,7 @@ export default function App() {
   const [players, setPlayers] = useState([]);
   const [points, setPoints] = useState(0);
 
-  // ✅ LIVE DATA
+  // ✅ API ophalen
   const fetchLive = async () => {
     try {
       const res = await fetch(API_URL, {
@@ -30,8 +30,7 @@ export default function App() {
       const data = await res.json();
 
       const wkMatches = data.matches
-        .filter(m => m.competition.name.includes("World Cup"))
-        .slice(0, 6);
+        .slice(0, 5); // pak gewoon eerste 5
 
       const scoreMap = {};
       const matchList = [];
@@ -57,31 +56,31 @@ export default function App() {
     }
   };
 
-  // ✅ automatisch refresh
+  // ✅ refresh elke 30 sec
   useEffect(() => {
     fetchLive();
     const interval = setInterval(fetchLive, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ score invoeren
+  // ✅ FIXED INPUT
   const handleScore = (id, team, value) => {
-    setPredictions({
-      ...predictions,
+    setPredictions((prev) => ({
+      ...prev,
       [id]: {
-        ...(predictions[id] || {}),
+        ...(prev[id] || {}),
         [team]: Number(value)
       }
-    });
+    }));
   };
 
-  // ✅ punten berekenen
+  // ✅ punten
   const calculatePoints = () => {
     let pts = 0;
 
-    matches.forEach(match => {
-      const p = predictions[match.id];
-      const r = realScores[match.id];
+    matches.forEach(m => {
+      const p = predictions[m.id];
+      const r = realScores[m.id];
 
       if (!p || !r) return;
 
@@ -102,7 +101,7 @@ export default function App() {
     return pts;
   };
 
-  // ✅ HAAL RANKING OP
+  // ✅ load ranking
   const loadRanking = async () => {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/poule?pool=eq.${pool}&select=*`,
@@ -118,7 +117,7 @@ export default function App() {
     setPlayers(data);
   };
 
-  // ✅ OPSLAAN
+  // ✅ save
   const save = async () => {
     const pts = calculatePoints();
 
@@ -141,17 +140,17 @@ export default function App() {
     loadRanking();
   };
 
-  // ✅ LOGIN
+  // ✅ login
   const login = () => {
     if (!name || !pool) {
-      alert("Vul alles in!");
+      alert("Vul alles in");
       return;
     }
     setLoggedIn(true);
     loadRanking();
   };
 
-  // ✅ LOGIN SCHERM
+  // ✅ LOGIN
   if (!loggedIn) {
     return (
       <div style={{
@@ -159,9 +158,9 @@ export default function App() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "linear-gradient(135deg, purple, blue)"
+        background: "purple"
       }}>
-        <div style={{ background: "white", padding: "20px", borderRadius: "10px" }}>
+        <div style={{ background: "white", padding: "20px" }}>
           <h2>⚽ WK Poule</h2>
 
           <input placeholder="Naam" onChange={(e) => setName(e.target.value)} /><br /><br />
@@ -177,7 +176,7 @@ export default function App() {
   return (
     <div style={{ padding: "20px" }}>
 
-      <h1>🏆 WK Poule (LIVE)</h1>
+      <h1>🏆 WK Poule LIVE</h1>
 
       {matches.map(m => {
         const live = realScores[m.id];
@@ -188,6 +187,7 @@ export default function App() {
 
             <input
               type="number"
+              value={predictions[m.id]?.home ?? ""}
               onChange={(e) => handleScore(m.id, "home", e.target.value)}
               style={{ width: "40px", margin: "0 5px" }}
             />
@@ -196,6 +196,7 @@ export default function App() {
 
             <input
               type="number"
+              value={predictions[m.id]?.away ?? ""}
               onChange={(e) => handleScore(m.id, "away", e.target.value)}
               style={{ width: "40px", margin: "0 5px" }}
             />
