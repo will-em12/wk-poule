@@ -93,14 +93,7 @@ export default function App() {
   };
 
   // ✅ opslaan (simpele poule)
-  const save = () => {
-    calculatePoints();
 
-    setPlayers([
-      ...players,
-      { name: name, pts: points }
-    ]);
-  };
 
   // ✅ LOGIN
   if (!loggedIn) {
